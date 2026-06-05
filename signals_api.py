@@ -32,6 +32,9 @@ from x402.http.types import RouteConfig
 from x402.mechanisms.evm.exact import ExactEvmServerScheme
 from x402.server import x402ResourceServerSync
 
+from eth_account import Account
+from eth_account.messages import encode_defunct
+
 load_dotenv()
 
 # ---- Config (from .env) ----------------------------------------------------
@@ -41,6 +44,7 @@ FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://x402.org/facilitator")
 PRICE = os.getenv("PRICE", "$0.01")                    # price per /signals call
 TOP_PRICE = os.getenv("TOP_PRICE", "$0.10")            # price per /signals/top call (market scan)
 BOT_ROOT = os.getenv("BOT_ROOT", "/root/bot")          # path to the Kraken bot package
+SIGNING_KEY = os.getenv("SIGNING_KEY")                 # dedicated FUND-LESS key that signs signals
 
 if not EVM_ADDRESS:
     raise ValueError("Missing EVM_ADDRESS in .env (your Base receiving address)")
@@ -166,6 +170,29 @@ def generate_top(limit=_TOP_DEFAULT_LIMIT):
         return payload
 
 
+# ---- Signed signals --------------------------------------------------------
+# Every signal response carries an ECDSA signature buyers can verify (recover)
+# against our published signer address -> proves the signal is authentic and
+# untampered. Uses a DEDICATED, FUND-LESS key (never the receiving wallet key).
+_SIGNER_ADDRESS = Account.from_key(SIGNING_KEY).address if SIGNING_KEY else None
+
+
+def _signed(payload):
+    """Return payload + 'signed_by' (address) + 'signature' (over the JSON body
+    BEFORE these two keys are added)."""
+    if not SIGNING_KEY:
+        return payload
+    body = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    raw = Account.sign_message(encode_defunct(text=body), private_key=SIGNING_KEY).signature
+    sig = raw.hex()
+    if not sig.startswith("0x"):
+        sig = "0x" + sig
+    out = dict(payload)
+    out["signed_by"] = _SIGNER_ADDRESS
+    out["signature"] = sig
+    return out
+
+
 # ---- App + x402 middleware (sync variants, Flask is sync) ------------------
 app = Flask(__name__)
 
@@ -218,7 +245,7 @@ def signals():
     payload = generate_signal(pair)
     if payload.get("_unavailable"):
         return jsonify(_unavailable_body(payload.get("reason"))), 503
-    return jsonify(payload)
+    return jsonify(_signed(payload))
 
 
 @app.route("/signals/top")
@@ -233,7 +260,7 @@ def signals_top():
         return jsonify(_unavailable_body(payload.get("reason"))), 503
     out = dict(payload)
     out["top"] = payload.get("top", [])[:limit]
-    return jsonify(out)
+    return jsonify(_signed(out))
 
 
 @app.route("/signals/preview")
@@ -243,7 +270,7 @@ def signals_preview():
     payload = generate_signal(_DEFAULT_PAIR)
     if payload.get("_unavailable"):
         return jsonify(_unavailable_body(payload.get("reason"))), 503
-    return jsonify({
+    return jsonify(_signed({
         "pair": payload.get("pair"),
         "signal": payload.get("signal"),
         "preview": True,
@@ -253,7 +280,7 @@ def signals_preview():
         "timeframe": payload.get("timeframe"),
         "generated_at": payload.get("generated_at"),
         "disclaimer": payload.get("disclaimer"),
-    })
+    }))
 
 
 _LANDING_HTML = """<!doctype html><html><head><meta charset="utf-8">
@@ -458,6 +485,14 @@ def x402_manifest():
         "pairs": (
             "All active Kraken */USD spot pairs (e.g. BTC/USD, ETH/USD, SOL/USD, "
             "XRP/USD, DOGE/USD). Pass any with ?pair=."
+        ),
+        "signer": _SIGNER_ADDRESS,
+        "signature_scheme": (
+            "Every /signals, /signals/top and /signals/preview response includes "
+            "'signed_by' (address) and 'signature'. Verify with Ethereum "
+            "personal_sign / ecrecover over the JSON body WITHOUT the signed_by & "
+            "signature keys, serialized json.dumps(sort_keys=True, "
+            "separators=(',',':')). recover == signed_by => authentic & untampered."
         ),
         "endpoints": [
             {"path": "/signals", "method": "GET", "price": PRICE,

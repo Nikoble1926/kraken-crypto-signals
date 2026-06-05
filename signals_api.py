@@ -235,6 +235,26 @@ def signals_top():
     return jsonify(out)
 
 
+@app.route("/signals/preview")
+def signals_preview():
+    """Free sample: BTC/USD direction only (no confidence). Lets agents/devs
+    evaluate before paying for /signals (confidence + any pair) or /signals/top."""
+    payload = generate_signal(_DEFAULT_PAIR)
+    if payload.get("_unavailable"):
+        return jsonify(_unavailable_body(payload.get("reason"))), 503
+    return jsonify({
+        "pair": payload.get("pair"),
+        "signal": payload.get("signal"),
+        "preview": True,
+        "note": ("Free sample: BTC/USD direction only. Pay GET /signals for "
+                 "confidence + any Kraken */USD pair, or GET /signals/top for a "
+                 "market scan."),
+        "timeframe": payload.get("timeframe"),
+        "generated_at": payload.get("generated_at"),
+        "disclaimer": payload.get("disclaimer"),
+    })
+
+
 _LANDING_HTML = """<!doctype html><html><head><meta charset="utf-8">
 <title>Kraken Crypto Signals &mdash; x402 API</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -357,6 +377,17 @@ OPENAPI_SPEC = {
                                 "schema": {"$ref": "#/components/schemas/TopSignals"}}}},
                     "402": {"description": "Payment required (x402 challenge)."},
                     "503": {"description": "Market data unavailable (no charge)."},
+                },
+            }
+        },
+        "/signals/preview": {
+            "get": {
+                "operationId": "getSignalPreview",
+                "summary": "Free sample signal (BTC/USD direction, no payment)",
+                "security": [],
+                "responses": {
+                    "200": {"description": "Free preview signal"},
+                    "503": {"description": "Market data unavailable."},
                 },
             }
         },

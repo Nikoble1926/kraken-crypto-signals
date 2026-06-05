@@ -155,7 +155,7 @@ def generate_top(limit=_TOP_DEFAULT_LIMIT):
         payload = {
             "scanned_pairs": len(scanned),
             "actionable": len(actionable),
-            "top": actionable[:limit],
+            "top": actionable[:10],  # cache up to 10; route slices to ?limit
             "universe": _TOP_PAIRS,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "disclaimer": _DISCLAIMER,
@@ -221,10 +221,17 @@ def signals():
 
 @app.route("/signals/top")
 def signals_top():
+    try:
+        limit = int(request.args.get("limit", _TOP_DEFAULT_LIMIT))
+    except (TypeError, ValueError):
+        limit = _TOP_DEFAULT_LIMIT
+    limit = max(1, min(10, limit))
     payload = generate_top()
     if payload.get("_unavailable"):
         return jsonify(_unavailable_body(payload.get("reason"))), 503
-    return jsonify(payload)
+    out = dict(payload)
+    out["top"] = payload.get("top", [])[:limit]
+    return jsonify(out)
 
 
 _LANDING_HTML = """<!doctype html><html><head><meta charset="utf-8">
@@ -246,6 +253,119 @@ _LANDING_HTML = """<!doctype html><html><head><meta charset="utf-8">
 @app.route("/")
 def home():
     return _LANDING_HTML
+
+
+def _price_amount(p):
+    return p.lstrip("$") if isinstance(p, str) else str(p)
+
+
+# ---- OpenAPI 3.1 discovery doc (x402scan reads /openapi.json first) --------
+OPENAPI_SPEC = {
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Kraken Crypto Signals",
+        "version": "1.0.0",
+        "description": ("Pay-per-call crypto trading signals (BUY/SELL/HOLD + "
+                        "confidence) for AI agents over x402 on Base."),
+    },
+    "servers": [{"url": "https://signals.nsgoods.org"}],
+    "components": {
+        "securitySchemes": {
+            "x402Payment": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-PAYMENT",
+                "description": "x402 payment payload (USDC on Base).",
+            }
+        },
+        "schemas": {
+            "Signal": {
+                "type": "object",
+                "properties": {
+                    "pair": {"type": "string", "example": "BTC/USD"},
+                    "signal": {"type": "string", "enum": ["BUY", "SELL", "HOLD"]},
+                    "confidence": {"type": "number", "format": "float"},
+                    "timeframe": {"type": "string"},
+                    "generated_at": {"type": "string", "format": "date-time"},
+                    "disclaimer": {"type": "string"},
+                },
+            },
+            "TopSignals": {
+                "type": "object",
+                "properties": {
+                    "scanned_pairs": {"type": "integer"},
+                    "actionable": {"type": "integer"},
+                    "top": {"type": "array",
+                            "items": {"$ref": "#/components/schemas/Signal"}},
+                    "universe": {"type": "array", "items": {"type": "string"}},
+                    "generated_at": {"type": "string", "format": "date-time"},
+                    "disclaimer": {"type": "string"},
+                },
+            },
+        },
+    },
+    "paths": {
+        "/signals": {
+            "get": {
+                "operationId": "getSignal",
+                "summary": "Trading signal for one pair (BUY/SELL/HOLD + confidence)",
+                "security": [{"x402Payment": []}],
+                "x-payment-info": {
+                    "protocols": ["x402"],
+                    "price": {"mode": "fixed", "currency": "USD",
+                              "amount": _price_amount(PRICE)},
+                    "network": NETWORK,
+                    "payTo": EVM_ADDRESS,
+                },
+                "parameters": [
+                    {"name": "pair", "in": "query", "required": False,
+                     "description": "Any active Kraken */USD spot pair.",
+                     "schema": {"type": "string", "default": _DEFAULT_PAIR,
+                                "example": "ETH/USD"}}
+                ],
+                "responses": {
+                    "200": {"description": "Trading signal",
+                            "content": {"application/json": {
+                                "schema": {"$ref": "#/components/schemas/Signal"}}}},
+                    "402": {"description": "Payment required (x402 challenge)."},
+                    "503": {"description": "Market data unavailable (no charge)."},
+                },
+            }
+        },
+        "/signals/top": {
+            "get": {
+                "operationId": "getTopSignals",
+                "summary": "Market scan: strongest BUY/SELL signals across major pairs",
+                "security": [{"x402Payment": []}],
+                "x-payment-info": {
+                    "protocols": ["x402"],
+                    "price": {"mode": "fixed", "currency": "USD",
+                              "amount": _price_amount(TOP_PRICE)},
+                    "network": NETWORK,
+                    "payTo": EVM_ADDRESS,
+                },
+                "parameters": [
+                    {"name": "limit", "in": "query", "required": False,
+                     "description": "How many top signals to return (1-10, default 3).",
+                     "schema": {"type": "integer", "default": _TOP_DEFAULT_LIMIT,
+                                "minimum": 1, "maximum": 10}}
+                ],
+                "responses": {
+                    "200": {"description": "Strongest signals",
+                            "content": {"application/json": {
+                                "schema": {"$ref": "#/components/schemas/TopSignals"}}}},
+                    "402": {"description": "Payment required (x402 challenge)."},
+                    "503": {"description": "Market data unavailable (no charge)."},
+                },
+            }
+        },
+    },
+}
+
+
+@app.route("/openapi.json")
+def openapi_spec():
+    return jsonify(OPENAPI_SPEC)
 
 
 @app.route("/health")

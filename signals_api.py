@@ -101,15 +101,16 @@ def generate_signal(pair=_DEFAULT_PAIR):
         try:
             payload = _compute(pair)
         except Exception as e:
-            payload = {
+            # Data pipeline failure -> mark unavailable so the route returns
+            # 503 (no charge on the standard x402 settle-after-success flow)
+            # instead of selling a junk HOLD signal.
+            unavailable = {
+                "_unavailable": True,
                 "pair": pair,
-                "signal": "HOLD",
-                "confidence": 0.0,
-                "timeframe": _DEFAULT_TIMEFRAME,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-                "disclaimer": _DISCLAIMER,
-                "error": "{}: {}".format(type(e).__name__, e),
+                "reason": "{}: {}".format(type(e).__name__, e),
             }
+            _cache[pair] = (now + 2, unavailable)  # short cache during outage
+            return unavailable
         _cache[pair] = (now + _CACHE_TTL_SECONDS, payload)
         return payload
 
@@ -140,9 +141,15 @@ def generate_top(limit=_TOP_DEFAULT_LIMIT):
         for pair in _TOP_PAIRS:
             try:
                 # generate_signal uses its own (_lock) per-pair cache -> safe here
-                scanned.append(generate_signal(pair))
+                s = generate_signal(pair)
             except Exception:
                 continue
+            if s.get("_unavailable"):
+                continue
+            scanned.append(s)
+        if not scanned:
+            # whole-market data outage -> let the route return 503 (no charge)
+            return {"_unavailable": True, "reason": "market data unavailable"}
         actionable = [s for s in scanned if s.get("signal") in ("BUY", "SELL")]
         actionable.sort(key=lambda s: s.get("confidence", 0), reverse=True)
         payload = {
@@ -194,15 +201,30 @@ payment_middleware(app, routes=routes, server=server)
 
 
 # ---- Routes ----------------------------------------------------------------
+def _unavailable_body(reason=None):
+    return {
+        "error": "signal_unavailable",
+        "message": ("Live market data is temporarily unavailable. "
+                    "You were not charged; please retry shortly."),
+        "detail": reason,
+    }
+
+
 @app.route("/signals")
 def signals():
     pair = request.args.get("pair", _DEFAULT_PAIR)
-    return jsonify(generate_signal(pair))
+    payload = generate_signal(pair)
+    if payload.get("_unavailable"):
+        return jsonify(_unavailable_body(payload.get("reason"))), 503
+    return jsonify(payload)
 
 
 @app.route("/signals/top")
 def signals_top():
-    return jsonify(generate_top())
+    payload = generate_top()
+    if payload.get("_unavailable"):
+        return jsonify(_unavailable_body(payload.get("reason"))), 503
+    return jsonify(payload)
 
 
 _LANDING_HTML = """<!doctype html><html><head><meta charset="utf-8">

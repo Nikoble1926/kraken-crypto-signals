@@ -3,3 +3,5 @@
 __pycache__/
 *.pyc
 venv/
+track_record_private.jsonl
+track_record_public.jsonl

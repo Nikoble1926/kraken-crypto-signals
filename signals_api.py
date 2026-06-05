@@ -18,6 +18,7 @@ Based on the official Coinbase x402 Flask example (confirmed API, June 2026).
 import os
 import sys
 import time
+import json
 import base64
 import threading
 from datetime import datetime, timezone
@@ -408,6 +409,39 @@ _FAVICON_ICO = base64.b64decode(
 @app.route("/favicon.ico")
 def favicon():
     return Response(_FAVICON_ICO, mimetype="image/x-icon")
+
+
+_TRACK_RECORD_PUBLIC = os.getenv(
+    "TRACK_RECORD_PUBLIC", "/root/signals_api/track_record_public.jsonl"
+)
+
+
+@app.route("/track-record")
+def track_record():
+    """Public, tamper-evident commitments to past signal snapshots (commit-reveal):
+    only a hash chain is public now; the full snapshot can be revealed later to
+    prove a past call without leaking live signals."""
+    entries = []
+    head = "GENESIS"
+    try:
+        with open(_TRACK_RECORD_PUBLIC) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    e = json.loads(line)
+                    entries.append(e)
+                    head = e.get("h", head)
+    except FileNotFoundError:
+        pass
+    return jsonify({
+        "scheme": ("Append-only hash chain. Each h = sha256 of the full signal "
+                   "snapshot (incl. a nonce). Only hashes are public now; reveal "
+                   "an entry later to prove a past call. Verify: each entry's "
+                   "'prev' must equal the previous entry's 'h'."),
+        "count": len(entries),
+        "head": head,
+        "entries": entries[-50:],
+    })
 
 
 @app.route("/health")

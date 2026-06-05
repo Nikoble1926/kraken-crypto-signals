@@ -1,8 +1,8 @@
 # Kraken Crypto Signals — x402 pay-per-call API
 
 Pay-per-call crypto trading signals for AI agents, served over the
-[x402](https://x402.org) protocol on **Base mainnet**. An agent calls
-`GET /signals`, receives HTTP 402, pays USDC, and gets a BUY/SELL/HOLD signal.
+[x402](https://x402.org) protocol on **Base mainnet**. An agent calls an
+endpoint, receives HTTP 402, pays USDC, and gets the signal.
 
 **Live:** https://signals.nsgoods.org
 **Manifest:** https://signals.nsgoods.org/.well-known/x402
@@ -10,9 +10,13 @@ Pay-per-call crypto trading signals for AI agents, served over the
 ## Endpoints
 | Path | Cost | Description |
 |------|------|-------------|
-| `GET /signals?pair=BTC/USD` | $0.01 USDC | Multi-timeframe trading signal |
+| `GET /signals?pair=BTC/USD` | $0.01 USDC | Trading signal for one pair (BUY/SELL/HOLD + confidence) |
+| `GET /signals/top` | $0.10 USDC | Market scan — strongest BUY/SELL signals across major pairs |
 | `GET /health` | free | Health check |
 | `GET /.well-known/x402` | free | x402 service manifest |
+| `GET /` | free | Human-readable landing page |
+
+Any active Kraken `*/USD` spot pair works via `?pair=` (e.g. `ETH/USD`, `SOL/USD`, `XRP/USD`, `DOGE/USD`).
 
 ## Run
 ```bash

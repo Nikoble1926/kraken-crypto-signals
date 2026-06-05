@@ -471,6 +471,33 @@ def track_record():
     })
 
 
+_YIELD_STATE = os.getenv("YIELD_STATE", "/root/signals_api/yield_agent_state.json")
+
+
+@app.route("/yield-paper")
+def yield_paper():
+    """Paper-mode yield agent: which vault, live APY, simulated balance/ROI.
+    NO real funds -- a free simulation of stablecoin yield-rotation on Base."""
+    try:
+        st = json.load(open(_YIELD_STATE))
+    except FileNotFoundError:
+        return jsonify({"mode": "paper", "status": "no data yet"})
+    try:
+        roi = round((st.get("balance", 0) / 1000.0 - 1) * 100, 3)
+    except Exception:
+        roi = None
+    return jsonify({
+        "mode": "paper (simulation only, NO real funds)",
+        "in_protocol": st.get("project"),
+        "live_apy_pct": st.get("apy"),
+        "sim_balance_usd": round(st.get("balance", 0), 4),
+        "roi_pct_since_start": roi,
+        "rotations": st.get("rotations"),
+        "started": st.get("started"),
+        "last_update": st.get("last_ts"),
+    })
+
+
 @app.route("/health")
 def health_check():
     return jsonify({"status": "ok"})

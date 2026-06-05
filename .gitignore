@@ -5,3 +5,5 @@ __pycache__/
 venv/
 track_record_private.jsonl
 track_record_public.jsonl
+yield_agent_state.json
+yield_agent_log.jsonl

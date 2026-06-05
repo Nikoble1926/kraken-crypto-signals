@@ -18,11 +18,12 @@ Based on the official Coinbase x402 Flask example (confirmed API, June 2026).
 import os
 import sys
 import time
+import base64
 import threading
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 
 from x402.http import FacilitatorConfig, HTTPFacilitatorClientSync, PaymentOption
 from x402.http.middleware.flask import payment_middleware
@@ -366,6 +367,16 @@ OPENAPI_SPEC = {
 @app.route("/openapi.json")
 def openapi_spec():
     return jsonify(OPENAPI_SPEC)
+
+
+_FAVICON_ICO = base64.b64decode(
+    "AAABAAIAEBAAAAAAIACwAgAAJgAAACAgAAAAACAACQEAANYCAACJUE5HDQoaCgAAAA1JSERSAAAAEAAAABAIBgAAAB/z/2EAAAJ3SURBVHicZZO/i1xVGIaf9zvn3rl3d3Zms7sBEYmFP0CIwopCGhFt1MK/IKWNna2NlWBhk8LCJtj4J1gYwXQKiuCCWggSFDSSZCcbd5OZuXPnnPNZzKxuyIHD27zvez6+wyOAjXNPvSGrPsD9ErgAY30M8PUFCsiRvvOy/HB278ZXGu49/aqXcA2pwYtjEmVlFzAvTi0R9F+JIxPunSy/aV7sikSD54SQzxMUxwS9w6VRzbnKSH46koTnJNF4sSsG2nd3l1n0vtDu7xHGNcpOn52XhxVbQfTFscrwRQZZdOGgfQMvgBCU6ZL2hR1ss8L7wjCKgrMZRBPE8vaU5tkx5EK53wvzEs8uLIxqcFHaSNtGvnh+h+1KvP+E+Piw47O3n+Sx1x5nfnPKybU/mf04sYjAk2MbkQufv04c1YzffY509VeG39+h3WvYKoW2NsbvXaStAhtvXSAd90y/uf3/6wBhq0JNIAwrNAik4hQgORSHPOnweSIddfgsgXi4wNfOU82nQYcC2CBAtJWGVTQ+VLBOeFnp+doYBLFrxqaJfLLE60B5sMT7DDpbIIi7AxREvTOgbyMf/XHCKyb+niWu/7Pg7uXrVJef4cEPhyxuHBPGNRGnyGS+LEw++YX2xT3y3Y7pt7f49E5Htz3gy0nHrVRop4kiKLOELzJqY4kgQ+5k1+HVnzn/zkXuf32T/NeMOKppgd3KOMqONiLzn44o0yVU5iAz8ANJ8uKp2t6k++0YggijipSdxoQDuThWG/ODCel4kSxG4X5wBiYacPcuS5VhQSwKvDSM/N5l7iUnCBAuTL6GSY/gbC7K6ntPaawk4orGR3D+F23mRMyTTFjTAAAAAElFTkSuQmCCiVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA0ElEQVR4nGNkwAK4hdT+YxOnFHx9d4sRXQxFgFYW43MIE70tR7eLid6WozuCiZBCWgMmavj+qokoWfq4hdT+D3wIEKNIeZf3wDqAloAuDsAXgizkGoqe8JD52mdeE20O2Q4gBNB9jcy/67aVsAOINYBSMDIS4agDRh0wqB1As4IIuaxQ3uWNs+wg2wHIxe1VE1GSil9kMHijgNggpBQMeAjQxQH4Qm/gQwBbdwkd0Cr+v767xTjgIQD3Pb17R7CQZ0IXoKflDAxovWMYoGf3HACyV0Trq971hwAAAABJRU5ErkJggg=="
+)
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return Response(_FAVICON_ICO, mimetype="image/x-icon")
 
 
 @app.route("/health")

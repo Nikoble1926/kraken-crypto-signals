@@ -1,0 +1,9 @@
+flask
+python-dotenv
+x402[evm]
+httpx
+ccxt
+pandas
+numpy
+ta
+gunicorn

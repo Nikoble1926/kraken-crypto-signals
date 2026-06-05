@@ -1,0 +1,24 @@
+{
+  "name": "kraken-crypto-signals-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@x402/axios": "latest",
+    "@x402/evm": "latest",
+    "axios": "^1.13.2",
+    "dotenv": "^16.4.5",
+    "viem": "^2.39.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

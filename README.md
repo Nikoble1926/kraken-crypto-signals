@@ -18,6 +18,12 @@ endpoint, receives HTTP 402, pays USDC, and gets the signal.
 
 Any active Kraken `*/USD` spot pair works via `?pair=` (e.g. `ETH/USD`, `SOL/USD`, `XRP/USD`, `DOGE/USD`).
 
+## Use with Claude Desktop (MCP)
+
+Add these signals as paid tools in Claude Desktop (or any MCP client) - the bridge pays USDC on Base automatically per call. The `get_signal_preview` tool is free.
+
+See [`mcp/`](./mcp) for setup.
+
 ## Run
 ```bash
 pip install -r requirements.txt

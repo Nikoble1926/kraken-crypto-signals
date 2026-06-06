@@ -31,6 +31,7 @@ from x402.http.middleware.flask import payment_middleware
 from x402.http.types import RouteConfig
 from x402.mechanisms.evm.exact import ExactEvmServerScheme
 from x402.server import x402ResourceServerSync
+from x402.extensions.bazaar import declare_discovery_extension, OutputConfig
 
 from eth_account import Account
 from eth_account.messages import encode_defunct
@@ -200,6 +201,119 @@ facilitator = HTTPFacilitatorClientSync(FacilitatorConfig(url=FACILITATOR_URL))
 server = x402ResourceServerSync(facilitator)
 server.register(NETWORK, ExactEvmServerScheme())
 
+
+# ---- Bazaar discovery extensions (agentic.market indexer) ------------------
+# Top-level "extensions.bazaar" gets injected into the 402 PAYMENT-REQUIRED
+# response so indexers (e.g. agentic.market) can list this service. Output
+# example + schema mirror the actual signed JSON returned post-payment.
+
+_SIG_EXAMPLE = {
+    "pair": "BTC/USD",
+    "signal": "HOLD",
+    "confidence": 0.42,
+    "timeframe": "1m",
+    "generated_at": "2026-06-06T22:00:00+00:00",
+    "disclaimer": _DISCLAIMER,
+    "signed_by": "0x5e63d01d6A266BC17f577B80199a2a07B15053C7",
+    "signature": "0x10fafe37c311ef9f70d1c5b119454a553c82c0bb9981b09560485c3dc8072fc47bebad8022f12b240e02c38cbe4243a1f10b63f06502356c263dea35571974411c",
+}
+
+_SIG_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "pair":         {"type": "string"},
+        "signal":       {"type": "string", "enum": ["BUY", "SELL", "HOLD"]},
+        "confidence":   {"type": "number", "minimum": 0, "maximum": 1},
+        "timeframe":    {"type": "string"},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "disclaimer":   {"type": "string"},
+        "signed_by":    {"type": "string"},
+        "signature":    {"type": "string"},
+    },
+    "required": ["pair", "signal", "confidence", "timeframe", "generated_at"],
+}
+
+_TOP_EXAMPLE = {
+    "scanned_pairs": 12,
+    "actionable": 2,
+    "top": [
+        {"pair": "BTC/USD", "signal": "BUY", "confidence": 0.62,
+         "timeframe": "1m", "generated_at": "2026-06-06T22:00:00+00:00"},
+    ],
+    "universe": ["BTC/USD", "ETH/USD", "SOL/USD", "..."],
+    "generated_at": "2026-06-06T22:00:00+00:00",
+    "disclaimer": "Educational signal. Not financial advice.",
+    "signed_by": "0x5e63d01d6A266BC17f577B80199a2a07B15053C7",
+    "signature": "0x...",
+}
+
+_TOP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "scanned_pairs": {"type": "integer", "minimum": 0},
+        "actionable":    {"type": "integer", "minimum": 0},
+        "top": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pair":         {"type": "string"},
+                    "signal":       {"type": "string", "enum": ["BUY", "SELL", "HOLD"]},
+                    "confidence":   {"type": "number"},
+                    "timeframe":    {"type": "string"},
+                    "generated_at": {"type": "string", "format": "date-time"},
+                    "disclaimer":   {"type": "string"},
+                },
+            },
+        },
+        "universe":     {"type": "array", "items": {"type": "string"}},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "disclaimer":   {"type": "string"},
+        "signed_by":    {"type": "string"},
+        "signature":    {"type": "string"},
+    },
+    "required": ["scanned_pairs", "actionable", "top", "universe", "generated_at"],
+}
+
+_BAZAAR_SIGNALS_EXT = declare_discovery_extension(
+    input={"pair": "BTC/USD"},
+    input_schema={
+        "type": "object",
+        "properties": {
+            "pair": {
+                "type": "string",
+                "default": "BTC/USD",
+                "description": "Any active Kraken */USD spot pair (e.g. BTC/USD, ETH/USD)",
+            },
+        },
+        "required": [],
+    },
+    output=OutputConfig(example=_SIG_EXAMPLE, schema=_SIG_SCHEMA),
+)
+# declare_discovery_extension() leaves input.method blank because the middleware
+# is supposed to enrich it from the route key. The schema validator runs first
+# and rejects the missing method, so we set it inline.
+_BAZAAR_SIGNALS_EXT["bazaar"]["info"]["input"]["method"] = "GET"
+
+_BAZAAR_TOP_EXT = declare_discovery_extension(
+    input_schema={
+        "type": "object",
+        "properties": {
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10,
+                "default": 3,
+                "description": "How many top signals to return (1-10).",
+            },
+        },
+        "required": [],
+    },
+    output=OutputConfig(example=_TOP_EXAMPLE, schema=_TOP_SCHEMA),
+)
+_BAZAAR_TOP_EXT["bazaar"]["info"]["input"]["method"] = "GET"
+
+
 routes = {
     "GET /signals": RouteConfig(
         accepts=[
@@ -212,6 +326,7 @@ routes = {
         ],
         mime_type="application/json",
         description="Crypto trading signal for one pair (USDC pay-per-call)",
+        extensions=_BAZAAR_SIGNALS_EXT,
     ),
     "GET /signals/top": RouteConfig(
         accepts=[
@@ -224,6 +339,7 @@ routes = {
         ],
         mime_type="application/json",
         description="Market scan: strongest BUY/SELL signals across major pairs (USDC pay-per-call)",
+        extensions=_BAZAAR_TOP_EXT,
     ),
 }
 payment_middleware(app, routes=routes, server=server)
@@ -286,6 +402,7 @@ def signals_preview():
 _LANDING_HTML = """<!doctype html><html><head><meta charset="utf-8">
 <title>Kraken Crypto Signals &mdash; x402 API</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="talentapp:project_verification" content="5ba32c6b051dd9be1a05c3de8e074080ba65dafda1659e3f6407ad97c2877f9a4d493422a60a1495e6a76cc4f9e0fd46abbafc2cba7d4e67cccf62bb0e1b7740">
 <style>body{font-family:system-ui,Arial,sans-serif;max-width:680px;margin:40px auto;padding:0 16px;line-height:1.55;color:#111;background:#fafafa}code{background:#eee;padding:2px 6px;border-radius:4px}.box{background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:16px 20px;margin:16px 0}a{color:#1f6feb}</style>
 </head><body>
 <h1>Kraken Crypto Signals</h1>

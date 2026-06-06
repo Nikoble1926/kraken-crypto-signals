@@ -1,6 +1,7 @@
 flask
 python-dotenv
-x402[evm]
+x402[evm,extensions]
+jsonschema
 httpx
 ccxt
 pandas

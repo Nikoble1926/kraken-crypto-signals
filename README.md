@@ -7,6 +7,8 @@ endpoint, receives HTTP 402, pays USDC, and gets the signal.
 **Live:** https://signals.nsgoods.org
 **Manifest:** https://signals.nsgoods.org/.well-known/x402
 
+**Demo video (40s):** https://youtu.be/k2WhYqK1YvQ
+
 ## Endpoints
 | Path | Cost | Description |
 |------|------|-------------|

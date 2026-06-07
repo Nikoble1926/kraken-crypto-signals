@@ -9,6 +9,10 @@ endpoint, receives HTTP 402, pays USDC, and gets the signal.
 
 **Demo video (40s):** https://youtu.be/k2WhYqK1YvQ
 
+**Discovery:** Listed on the [x402 Bazaar](https://docs.cdp.coinbase.com/x402/bazaar) (CDP Facilitator) — AI agents can find this API via Bazaar semantic search and the merchant lookup for payTo `0xc87a06DEE4c0E85912296002617120BBfd5EF990`.
+
+Settlement runs through the [Coinbase CDP Facilitator](https://docs.cdp.coinbase.com/x402) (with KYT screening on USDC transfers). Previously settled through the [PayAI](https://facilitator.payai.network) facilitator before the switch to CDP.
+
 ## Endpoints
 | Path | Cost | Description |
 |------|------|-------------|

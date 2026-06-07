@@ -389,7 +389,7 @@ routes = {
             ),
         ],
         mime_type="application/json",
-        description="Crypto trading signal for one pair (USDC pay-per-call)",
+        description="Live market-state data for one crypto pair: BUY/SELL/HOLD state + confidence from a multi-timeframe engine. Machine-readable, ECDSA-signed. Input data for AI finance agents (USDC pay-per-call).",
         extensions=_BAZAAR_SIGNALS_EXT,
     ),
     "GET /signals/top": RouteConfig(
@@ -402,7 +402,7 @@ routes = {
             ),
         ],
         mime_type="application/json",
-        description="Market scan: strongest BUY/SELL signals across major pairs (USDC pay-per-call)",
+        description="Market scan data: strongest BUY/SELL states across major crypto pairs right now, with confidence. Machine-readable input for AI trading agents (USDC pay-per-call).",
         extensions=_BAZAAR_TOP_EXT,
     ),
 }
@@ -470,7 +470,7 @@ _LANDING_HTML = """<!doctype html><html><head><meta charset="utf-8">
 <style>body{font-family:system-ui,Arial,sans-serif;max-width:680px;margin:40px auto;padding:0 16px;line-height:1.55;color:#111;background:#fafafa}code{background:#eee;padding:2px 6px;border-radius:4px}.box{background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:16px 20px;margin:16px 0}a{color:#1f6feb}</style>
 </head><body>
 <h1>Kraken Crypto Signals</h1>
-<p>Pay-per-call crypto trading signals (<b>BUY / SELL / HOLD</b> + confidence) from a live multi-timeframe Kraken strategy. Built for AI agents via the <b>x402</b> protocol on Base.</p>
+<p>Machine-readable market-state data for AI agents: <b>BUY / SELL / HOLD</b> + confidence from a live multi-timeframe strategy.</p>
 <div class="box"><b>Agent endpoints (paid in USDC):</b><br>
 <code>GET /signals?pair=BTC/USD</code> &mdash; one pair &middot; $0.01<br>
 <code>GET /signals/top</code> &mdash; market scan, strongest signals &middot; $0.10</div>
@@ -495,8 +495,7 @@ OPENAPI_SPEC = {
     "info": {
         "title": "Kraken Crypto Signals",
         "version": "1.0.0",
-        "description": ("Pay-per-call crypto trading signals (BUY/SELL/HOLD + "
-                        "confidence) for AI agents over x402 on Base."),
+        "description": "Pay-per-call crypto market-state data (BUY/SELL/HOLD + confidence) for AI agents over x402 on Base.",
     },
     "servers": [{"url": "https://signals.nsgoods.org"}],
     "components": {
@@ -689,7 +688,7 @@ def x402_manifest():
     return jsonify({
         "x402Version": 2,
         "name": "Kraken Crypto Signals",
-        "description": "Pay-per-call multi-timeframe crypto trading signals (BUY/SELL/HOLD).",
+        "description": "Pay-per-call crypto market-state data (BUY/SELL/HOLD + confidence) for AI agents over x402 on Base. ECDSA-signed responses, free preview endpoint, no API keys.",
         "pairs": (
             "All active Kraken */USD spot pairs (e.g. BTC/USD, ETH/USD, SOL/USD, "
             "XRP/USD, DOGE/USD). Pass any with ?pair=."

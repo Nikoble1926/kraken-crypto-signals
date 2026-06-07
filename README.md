@@ -1,8 +1,9 @@
 # Kraken Crypto Signals — x402 pay-per-call API
 
-Pay-per-call crypto trading signals for AI agents, served over the
-[x402](https://x402.org) protocol on **Base mainnet**. An agent calls an
-endpoint, receives HTTP 402, pays USDC, and gets the signal.
+Pay-per-call crypto market-state data (BUY/SELL/HOLD + confidence) for AI
+agents, served over the [x402](https://x402.org) protocol on **Base mainnet**.
+An agent calls an endpoint, receives HTTP 402, pays USDC, and gets the
+machine-readable, ECDSA-signed data — no accounts, no API keys.
 
 **Live:** https://signals.nsgoods.org
 **Manifest:** https://signals.nsgoods.org/.well-known/x402

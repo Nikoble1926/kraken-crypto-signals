@@ -69,5 +69,41 @@ server.tool(
   }
 );
 
+server.tool(
+  "get_history",
+  "Paid ($0.05 USDC): revealed historical signal snapshots (commit-reveal hash chain). Returns past BUY/SELL/HOLD calls with their verifiable hashes; the latest snapshot is withheld.",
+  { limit: z.number().int().min(1).max(100).default(20).describe("How many past snapshots (1-100)") },
+  async ({ limit }) => {
+    const r = await api.get("/history", { params: { limit } });
+    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+  }
+);
+
+server.tool(
+  "get_regime_changed",
+  "Paid ($0.02 USDC): current market regime (RISK_ON/RISK_OFF) from a provable chain + whether it changed since the regime you last saw. Cheap poll endpoint to react to regime flips.",
+  { since: z.string().optional().describe("Regime you last saw (e.g. RISK_ON). If omitted, response reports the current regime only.") },
+  async ({ since }) => {
+    const params: Record<string, string> = {};
+    if (since) params.since = since;
+    const r = await api.get("/regime/changed", { params });
+    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+  }
+);
+
+server.tool(
+  "get_backtest",
+  "Paid ($0.25 USDC): walk-forward replay of the live multi-timeframe strategy over recent 1m history. Returns win-rate + average forward return per BUY/SELL signal so an agent can measure recent edge before subscribing.",
+  {
+    pair: z.string().default("BTC/USD").describe("Kraken */USD pair, e.g. BTC/USD, ETH/USD"),
+    forward: z.number().int().min(5).max(120).default(30).describe("Forward window in 1m bars to score each signal against (5-120)"),
+    step: z.number().int().min(1).max(15).default(5).describe("Walk-forward step in 1m bars (1-15). Smaller = denser sample but slower."),
+  },
+  async ({ pair, forward, step }) => {
+    const r = await api.get("/backtest", { params: { pair, forward, step } });
+    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+  }
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

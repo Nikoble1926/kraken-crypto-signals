@@ -50,6 +50,7 @@ TOP_PRICE = os.getenv("TOP_PRICE", "$0.10")            # price per /signals/top 
 HISTORY_PRICE = os.getenv("HISTORY_PRICE", "$0.05")    # /history (mirrors extra_endpoints.py)
 REGIME_PRICE = os.getenv("REGIME_PRICE", "$0.02")      # /regime/changed
 BACKTEST_PRICE = os.getenv("BACKTEST_PRICE", "$0.25")  # /backtest
+INDICATORS_PRICE = os.getenv("INDICATORS_PRICE", "$0.005")  # /indicators (high-freq TA)
 BOT_ROOT = os.getenv("BOT_ROOT", "/root/bot")          # path to the Kraken bot package
 SIGNING_KEY = os.getenv("SIGNING_KEY")                 # dedicated FUND-LESS key that signs signals
 CDP_API_KEY_ID = os.getenv("CDP_API_KEY_ID")           # CDP facilitator auth (Bazaar indexer requires CDP)
@@ -707,6 +708,38 @@ OPENAPI_SPEC = {
                 },
             }
         },
+        "/indicators": {
+            "get": {
+                "operationId": "getIndicators",
+                "summary": "Atomic technical indicators (RSI, EMA, MACD, ATR, Bollinger, volume)",
+                "security": [{"x402Payment": []}],
+                "x-payment-info": {
+                    "protocols": ["x402"],
+                    "price": {"mode": "fixed", "currency": "USD",
+                              "amount": _price_amount(INDICATORS_PRICE)},
+                    "network": NETWORK,
+                    "payTo": EVM_ADDRESS,
+                },
+                "parameters": [
+                    {"name": "pair", "in": "query", "required": False,
+                     "description": "Any active Kraken */USD spot pair.",
+                     "schema": {"type": "string", "default": _DEFAULT_PAIR,
+                                "example": "ETH/USD"}},
+                    {"name": "tf", "in": "query", "required": False,
+                     "description": "Candle timeframe.",
+                     "schema": {"type": "string", "default": "1h",
+                                "enum": ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]}},
+                    {"name": "name", "in": "query", "required": False,
+                     "description": "Optional: return only one indicator (e.g. rsi14, ema50, macd_hist).",
+                     "schema": {"type": "string", "example": "rsi14"}},
+                ],
+                "responses": {
+                    "200": {"description": "Indicator snapshot for the requested pair/timeframe."},
+                    "402": {"description": "Payment required (x402 challenge)."},
+                    "503": {"description": "Indicators unavailable (no charge)."},
+                },
+            }
+        },
     },
 }
 
@@ -892,6 +925,12 @@ def x402_manifest():
             {"path": "/signals/top", "method": "GET", "price": TOP_PRICE,
              "network": NETWORK, "payTo": EVM_ADDRESS, "mimeType": "application/json",
              "description": "Market scan: strongest BUY/SELL signals across major pairs"},
+            {"path": "/indicators", "method": "GET", "price": INDICATORS_PRICE,
+             "network": NETWORK, "payTo": EVM_ADDRESS, "mimeType": "application/json",
+             "params": {"pair": "e.g. BTC/USD (default)",
+                        "tf": "1m|5m|15m|30m|1h (default)|4h|1d",
+                        "name": "optional, return only one (e.g. rsi14, ema50, macd_hist)"},
+             "description": "Atomic technical indicators (RSI, EMA, MACD, ATR, Bollinger, volume) for any pair/timeframe"},
         ],
         "disclaimer": _DISCLAIMER,
     })

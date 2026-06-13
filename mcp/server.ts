@@ -105,5 +105,21 @@ server.tool(
   }
 );
 
+server.tool(
+  "get_indicators",
+  "Paid ($0.005 USDC): atomic TA indicators (RSI, EMA, MACD, ATR, Bollinger, volume) for a pair/timeframe. Cheap high-frequency poll endpoint.",
+  {
+    pair: z.string().default("BTC/USD").describe("Kraken */USD pair, e.g. BTC/USD, ETH/USD"),
+    tf: z.enum(["1m", "5m", "15m", "30m", "1h", "4h", "1d"]).default("1h").describe("Candle timeframe"),
+    name: z.string().optional().describe("Optional: return only one indicator (e.g. rsi14, ema50, macd_hist)"),
+  },
+  async ({ pair, tf, name }) => {
+    const params: Record<string, string> = { pair, tf };
+    if (name) params.name = name;
+    const r = await api.get("/indicators", { params });
+    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+  }
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

@@ -16,6 +16,7 @@ The **preview** tool is free; the others cost a few cents per call.
 | `get_history` | $0.05 USDC | Revealed historical signal snapshots (commit-reveal) + verifiable hashes |
 | `get_regime_changed` | $0.02 USDC | Market regime (RISK_ON/RISK_OFF) + whether it changed since you last looked |
 | `get_backtest` | $0.25 USDC | Walk-forward replay: win-rate + avg forward return per BUY/SELL signal |
+| `get_indicators` | $0.005 USDC | Atomic TA indicators (RSI, EMA, MACD, ATR, Bollinger, volume) for a pair/timeframe |
 
 ## Prerequisites
 

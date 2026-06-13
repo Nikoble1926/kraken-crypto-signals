@@ -44,6 +44,7 @@ def register(app, routes, *, EVM_ADDRESS, NETWORK, signed, unavailable_body,
     HISTORY_PRICE = os.getenv("HISTORY_PRICE", "$0.05")
     REGIME_PRICE = os.getenv("REGIME_PRICE", "$0.02")
     BACKTEST_PRICE = os.getenv("BACKTEST_PRICE", "$0.25")
+    INDICATORS_PRICE = os.getenv("INDICATORS_PRICE", "$0.005")
     REGIME_HEAD_URL = os.getenv("REGIME_HEAD_URL",
                                 "https://regime.nsgoods.org/provable/head")
     TRACK_RECORD_PRIVATE = os.getenv(
@@ -81,6 +82,11 @@ def register(app, routes, *, EVM_ADDRESS, NETWORK, signed, unavailable_body,
     _bt_ttl = 60
     _bt_lock = threading.Lock()
     _bt_cache = {}
+
+    # ---- indicators cache (15s per (pair, tf, name)) -----------------------
+    _ind_ttl = 15
+    _ind_lock = threading.Lock()
+    _ind_cache = {}
 
     # ---- Bazaar discovery extensions ---------------------------------------
     hist_ext = declare_discovery_extension(
@@ -204,6 +210,51 @@ def register(app, routes, *, EVM_ADDRESS, NETWORK, signed, unavailable_body,
     )
     bt_ext["bazaar"]["info"]["input"]["method"] = "GET"
 
+    ind_ext = declare_discovery_extension(
+        input_schema={
+            "type": "object",
+            "properties": {
+                "pair": {"type": "string", "default": "BTC/USD",
+                         "description": "Kraken */USD pair, e.g. BTC/USD, ETH/USD."},
+                "tf": {"type": "string", "default": "1h",
+                       "enum": ["1m", "5m", "15m", "30m", "1h", "4h", "1d"],
+                       "description": "Timeframe of the candle series feeding the indicators."},
+                "name": {"type": "string",
+                         "description": "Optional: return only one indicator (e.g. rsi14, ema50, macd_hist)."},
+            },
+            "required": [],
+        },
+        output=OutputConfig(
+            example={
+                "pair": "BTC/USD",
+                "timeframe": "1h",
+                "indicators": {
+                    "price": 64205.7, "rsi14": 38.54,
+                    "ema20": 64320.1, "ema50": 64510.2, "ema200": 63870.4,
+                    "sma20": 64298.0,
+                    "macd": -42.3, "macd_signal": -35.1, "macd_hist": -7.2,
+                    "atr14": 215.6,
+                    "bb_upper": 64880.1, "bb_mid": 64298.0, "bb_lower": 63715.9,
+                    "volume": 1.2796,
+                },
+                "candle_ts": "2026-06-13T21:00:00",
+                "generated_at": "2026-06-13T21:30:00+00:00",
+            },
+            schema={
+                "type": "object",
+                "properties": {
+                    "pair": {"type": "string"},
+                    "timeframe": {"type": "string"},
+                    "indicators": {"type": "object"},
+                    "candle_ts": {"type": "string"},
+                    "generated_at": {"type": "string", "format": "date-time"},
+                },
+                "required": ["pair", "timeframe", "indicators", "generated_at"],
+            },
+        ),
+    )
+    ind_ext["bazaar"]["info"]["input"]["method"] = "GET"
+
     # ---- register paid routes with the x402 middleware ---------------------
     routes["GET /history"] = RouteConfig(
         accepts=[PaymentOption(scheme="exact", pay_to=EVM_ADDRESS,
@@ -232,6 +283,16 @@ def register(app, routes, *, EVM_ADDRESS, NETWORK, signed, unavailable_body,
                     "BUY/SELL signal. Lets an agent measure recent edge before "
                     "subscribing to the live signal stream (USDC on Base).",
         extensions=bt_ext,
+    )
+    routes["GET /indicators"] = RouteConfig(
+        accepts=[PaymentOption(scheme="exact", pay_to=EVM_ADDRESS,
+                               price=INDICATORS_PRICE, network=NETWORK)],
+        mime_type="application/json",
+        description="Atomic technical indicators (RSI, EMA20/50/200, MACD, ATR, "
+                    "Bollinger, volume) for any Kraken */USD pair and timeframe. "
+                    "Cheap high-frequency poll endpoint for AI trading agents "
+                    "(USDC on Base).",
+        extensions=ind_ext,
     )
 
     # ---- handlers ----------------------------------------------------------
@@ -432,4 +493,77 @@ def register(app, routes, *, EVM_ADDRESS, NETWORK, signed, unavailable_body,
             return jsonify(unavailable_body(
                 "backtest failed: {}".format(type(e).__name__))), 503
 
-    return ["GET /history", "GET /regime/changed", "GET /backtest"]
+    @app.route("/indicators")
+    def indicators():
+        if engine is None:
+            return jsonify(unavailable_body("engine not wired")), 503
+        pair = (request.args.get("pair", "BTC/USD") or "BTC/USD").upper().replace("-", "/")
+        tf = request.args.get("tf", "1h")
+        if tf not in {"1m", "5m", "15m", "30m", "1h", "4h", "1d"}:
+            tf = "1h"
+        name = request.args.get("name")
+        ck = (pair, tf, name or "*")
+        now = time.time()
+        c = _ind_cache.get(ck)
+        if c and c[0] > now:
+            return jsonify(c[1])
+        with _ind_lock:
+            c = _ind_cache.get(ck)
+            if c and c[0] > now:
+                return jsonify(c[1])
+            try:
+                df = engine.get_candles(pair, tf, limit=300)
+            except Exception as e:
+                return jsonify(unavailable_body(
+                    "candle fetch: {}".format(type(e).__name__))), 503
+            try:
+                import math
+                from ta.momentum import RSIIndicator
+                from ta.trend import EMAIndicator, SMAIndicator, MACD
+                from ta.volatility import AverageTrueRange, BollingerBands
+                if df is None or len(df) < 60:
+                    return jsonify(unavailable_body("not enough candles")), 503
+                close, high, low, vol = df["close"], df["high"], df["low"], df["volume"]
+
+                def L(s):
+                    try:
+                        v = float(s.iloc[-1])
+                        return None if (v != v or math.isinf(v)) else round(v, 6)
+                    except Exception:
+                        return None
+                macd = MACD(close)
+                bb = BollingerBands(close, window=20, window_dev=2)
+                ind = {
+                    "price": L(close),
+                    "rsi14": L(RSIIndicator(close, window=14).rsi()),
+                    "ema20": L(EMAIndicator(close, window=20).ema_indicator()),
+                    "ema50": L(EMAIndicator(close, window=50).ema_indicator()),
+                    "ema200": (L(EMAIndicator(close, window=200).ema_indicator())
+                               if len(df) >= 200 else None),
+                    "sma20": L(SMAIndicator(close, window=20).sma_indicator()),
+                    "macd": L(macd.macd()),
+                    "macd_signal": L(macd.macd_signal()),
+                    "macd_hist": L(macd.macd_diff()),
+                    "atr14": L(AverageTrueRange(high, low, close, window=14).average_true_range()),
+                    "bb_upper": L(bb.bollinger_hband()),
+                    "bb_mid": L(bb.bollinger_mavg()),
+                    "bb_lower": L(bb.bollinger_lband()),
+                    "volume": L(vol),
+                }
+                if name:
+                    k = name.lower()
+                    ind = {k: ind.get(k)}
+                ts = df["timestamp"].iloc[-1]
+                body = signed({
+                    "pair": pair, "timeframe": tf, "indicators": ind,
+                    "candle_ts": (ts.isoformat() if hasattr(ts, "isoformat") else str(ts)),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "disclaimer": DISCLAIMER,
+                })
+                _ind_cache[ck] = (now + _ind_ttl, body)
+                return jsonify(body)
+            except Exception as e:
+                return jsonify(unavailable_body(
+                    "indicator calc: {}".format(type(e).__name__))), 503
+
+    return ["GET /history", "GET /regime/changed", "GET /backtest", "GET /indicators"]

@@ -47,6 +47,9 @@ NETWORK = os.getenv("NETWORK", "eip155:84532")         # 84532 = Base Sepolia (t
 FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://x402.org/facilitator")
 PRICE = os.getenv("PRICE", "$0.01")                    # price per /signals call
 TOP_PRICE = os.getenv("TOP_PRICE", "$0.10")            # price per /signals/top call (market scan)
+HISTORY_PRICE = os.getenv("HISTORY_PRICE", "$0.05")    # /history (mirrors extra_endpoints.py)
+REGIME_PRICE = os.getenv("REGIME_PRICE", "$0.02")      # /regime/changed
+BACKTEST_PRICE = os.getenv("BACKTEST_PRICE", "$0.25")  # /backtest
 BOT_ROOT = os.getenv("BOT_ROOT", "/root/bot")          # path to the Kraken bot package
 SIGNING_KEY = os.getenv("SIGNING_KEY")                 # dedicated FUND-LESS key that signs signals
 CDP_API_KEY_ID = os.getenv("CDP_API_KEY_ID")           # CDP facilitator auth (Bazaar indexer requires CDP)
@@ -615,6 +618,88 @@ OPENAPI_SPEC = {
                 "responses": {
                     "200": {"description": "Free preview signal"},
                     "503": {"description": "Market data unavailable."},
+                },
+            }
+        },
+        "/history": {
+            "get": {
+                "operationId": "getHistory",
+                "summary": "Historical revealed signal snapshots + verifiable hashes",
+                "security": [{"x402Payment": []}],
+                "x-payment-info": {
+                    "protocols": ["x402"],
+                    "price": {"mode": "fixed", "currency": "USD",
+                              "amount": _price_amount(HISTORY_PRICE)},
+                    "network": NETWORK,
+                    "payTo": EVM_ADDRESS,
+                },
+                "parameters": [
+                    {"name": "limit", "in": "query", "required": False,
+                     "description": "How many past snapshots to return (1-100, default 20).",
+                     "schema": {"type": "integer", "default": 20,
+                                "minimum": 1, "maximum": 100}}
+                ],
+                "responses": {
+                    "200": {"description": "Revealed signal snapshots (commit-reveal hash chain)."},
+                    "402": {"description": "Payment required (x402 challenge)."},
+                    "503": {"description": "Not enough history yet (no charge)."},
+                },
+            }
+        },
+        "/regime/changed": {
+            "get": {
+                "operationId": "getRegimeChanged",
+                "summary": "Market regime (RISK_ON/RISK_OFF) + change-since flag",
+                "security": [{"x402Payment": []}],
+                "x-payment-info": {
+                    "protocols": ["x402"],
+                    "price": {"mode": "fixed", "currency": "USD",
+                              "amount": _price_amount(REGIME_PRICE)},
+                    "network": NETWORK,
+                    "payTo": EVM_ADDRESS,
+                },
+                "parameters": [
+                    {"name": "since", "in": "query", "required": False,
+                     "description": "Regime you last saw (e.g. RISK_ON); response reports if it changed.",
+                     "schema": {"type": "string", "example": "RISK_ON"}}
+                ],
+                "responses": {
+                    "200": {"description": "Current regime + change indicator."},
+                    "402": {"description": "Payment required (x402 challenge)."},
+                    "503": {"description": "Regime feed unavailable (no charge)."},
+                },
+            }
+        },
+        "/backtest": {
+            "get": {
+                "operationId": "getBacktest",
+                "summary": "Walk-forward replay: win-rate + avg forward return per signal",
+                "security": [{"x402Payment": []}],
+                "x-payment-info": {
+                    "protocols": ["x402"],
+                    "price": {"mode": "fixed", "currency": "USD",
+                              "amount": _price_amount(BACKTEST_PRICE)},
+                    "network": NETWORK,
+                    "payTo": EVM_ADDRESS,
+                },
+                "parameters": [
+                    {"name": "pair", "in": "query", "required": False,
+                     "description": "Any active Kraken */USD spot pair.",
+                     "schema": {"type": "string", "default": _DEFAULT_PAIR,
+                                "example": "ETH/USD"}},
+                    {"name": "forward", "in": "query", "required": False,
+                     "description": "Forward window in 1m bars to score each signal (5-120, default 30).",
+                     "schema": {"type": "integer", "default": 30,
+                                "minimum": 5, "maximum": 120}},
+                    {"name": "step", "in": "query", "required": False,
+                     "description": "Walk-forward step in 1m bars (1-15, default 5).",
+                     "schema": {"type": "integer", "default": 5,
+                                "minimum": 1, "maximum": 15}},
+                ],
+                "responses": {
+                    "200": {"description": "Recent walk-forward replay summary."},
+                    "402": {"description": "Payment required (x402 challenge)."},
+                    "503": {"description": "Backtest unavailable (no charge)."},
                 },
             }
         },

@@ -406,6 +406,25 @@ routes = {
         extensions=_BAZAAR_TOP_EXT,
     ),
 }
+# ---- Optional extra paid endpoints (additive; safe no-op if anything fails) ----
+try:
+    from extra_endpoints import register as _register_extra
+    _register_extra(
+        app, routes,
+        EVM_ADDRESS=EVM_ADDRESS, NETWORK=NETWORK, signed=_signed,
+        unavailable_body=(lambda reason=None: {
+            "error": "signal_unavailable",
+            "message": ("Live data is temporarily unavailable. You were not "
+                        "charged; please retry shortly."),
+            "detail": reason}),
+        DISCLAIMER=_DISCLAIMER, RouteConfig=RouteConfig, PaymentOption=PaymentOption,
+        declare_discovery_extension=declare_discovery_extension,
+        OutputConfig=OutputConfig,
+        engine=_engine, strategy=_strategy)
+except Exception as _e:
+    print("[extra_endpoints] skipped:", _e, flush=True)
+
+
 payment_middleware(app, routes=routes, server=server)
 
 

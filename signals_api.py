@@ -518,6 +518,10 @@ OPENAPI_SPEC = {
         "title": "Kraken Crypto Signals",
         "version": "1.0.0",
         "description": "Pay-per-call crypto market-state data (BUY/SELL/HOLD + confidence) for AI agents over x402 on Base.",
+        "contact": {
+            "name": "Kraken Crypto Signals (Nikoble1926)",
+            "url": "https://github.com/Nikoble1926/kraken-crypto-signals",
+        },
     },
     "servers": [{"url": "https://signals.nsgoods.org"}],
     "components": {
@@ -785,6 +789,81 @@ def yield_paper():
 @app.route("/health")
 def health_check():
     return jsonify({"status": "ok"})
+
+
+_LLMS_TXT = (
+    "# Kraken Crypto Signals — x402 pay-per-call API\n"
+    "Machine-readable crypto market-state data for AI agents, paid per call in USDC on Base via x402. "
+    "No accounts, no API keys. Every response is ECDSA-signed and verifiable.\n"
+    "\n"
+    "Base: https://signals.nsgoods.org\n"
+    "Manifest: https://signals.nsgoods.org/.well-known/x402\n"
+    "OpenAPI: https://signals.nsgoods.org/openapi.json\n"
+    "Agent card (A2A): https://signals.nsgoods.org/.well-known/agent.json\n"
+    "MCP bridge: https://github.com/Nikoble1926/kraken-crypto-signals/tree/main/mcp\n"
+    "\n"
+    "Paid endpoints (USDC on Base):\n"
+    "- GET /signals?pair=BTC/USD   trading signal BUY/SELL/HOLD + confidence   $0.01\n"
+    "- GET /signals/top            market scan, strongest signals             $0.10\n"
+    "- GET /history?limit=20       revealed historical snapshots + hashes      $0.05\n"
+    "- GET /regime/changed?since=RISK_ON   market regime + change flag         $0.02\n"
+    "- GET /backtest?pair=BTC/USD  walk-forward win-rate + avg forward return  $0.25\n"
+    "\n"
+    "Free:\n"
+    "- GET /signals/preview        sample BTC/USD direction\n"
+    "- GET /track-record           public commit-reveal hash chain\n"
+    "\n"
+    "How to pay: call an endpoint; on HTTP 402, settle the x402 payment (USDC on Base) and retry. "
+    "See https://x402.org. Not financial advice.\n"
+)
+
+
+@app.route("/llms.txt")
+def llms_txt():
+    return Response(_LLMS_TXT, mimetype="text/plain; charset=utf-8")
+
+
+@app.route("/.well-known/agent.json")
+def agent_card():
+    return jsonify({
+        "name": "Kraken Crypto Signals",
+        "description": (
+            "Pay-per-call crypto market-state data (BUY/SELL/HOLD + confidence) "
+            "for AI agents over x402 on Base. ECDSA-signed, provable track-record, "
+            "backtest proof-of-edge."
+        ),
+        "url": "https://signals.nsgoods.org",
+        "version": "1.0.0",
+        "provider": {
+            "organization": "Nikoble1926",
+            "url": "https://github.com/Nikoble1926/kraken-crypto-signals",
+        },
+        "capabilities": {"streaming": False, "pushNotifications": False},
+        "defaultInputModes": ["application/json"],
+        "defaultOutputModes": ["application/json"],
+        "skills": [
+            {"id": "signals", "name": "Trading signal",
+             "description": "BUY/SELL/HOLD + confidence for one Kraken */USD pair. $0.01 USDC via x402.",
+             "tags": ["crypto", "trading", "x402", "signals"]},
+            {"id": "signals_top", "name": "Market scan",
+             "description": "Strongest BUY/SELL signals across major pairs. $0.10 USDC.",
+             "tags": ["crypto", "scan", "x402"]},
+            {"id": "history", "name": "Historical signals",
+             "description": "Revealed commit-reveal signal snapshots + verifiable hashes. $0.05 USDC.",
+             "tags": ["crypto", "history", "x402"]},
+            {"id": "regime_changed", "name": "Regime change",
+             "description": "RISK_ON/RISK_OFF regime + change-since flag. $0.02 USDC.",
+             "tags": ["crypto", "regime", "x402"]},
+            {"id": "backtest", "name": "Strategy backtest",
+             "description": "Walk-forward win-rate + avg forward return per signal. $0.25 USDC.",
+             "tags": ["crypto", "backtest", "x402"]},
+        ],
+        "x402": {
+            "network": NETWORK,
+            "payTo": EVM_ADDRESS,
+            "manifest": "https://signals.nsgoods.org/.well-known/x402",
+        },
+    })
 
 
 @app.route("/.well-known/x402")

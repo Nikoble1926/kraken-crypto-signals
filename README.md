@@ -11,6 +11,21 @@ Pay-per-call crypto market-state data for AI agents, served over the [x402](http
 - **Proof of edge** — `/backtest` replays the live strategy over recent history and returns win-rate + average forward return, so an agent can measure the edge before subscribing.
 - **No keys, no signup, free preview** — try `/signals/preview` for free, then pay per call in USDC on Base.
 
+## Quickstart (call & pay in ~5 minutes)
+A runnable demo agent lives in [`examples/quickstart`](examples/quickstart).
+It calls the FREE `/signals/preview` endpoint and then prints the decoded
+x402 `402 Payment Required` challenge for a paid endpoint — no funds needed.
+Add a low-balance Base hot-wallet key and the same call auto-pays in USDC on Base.
+
+```bash
+cd examples/quickstart
+npm install
+cp .env.example .env      # leave WALLET_PRIVATE_KEY empty for the no-funds demo
+node agent.js
+```
+
+Paid endpoints: `/indicators` ($0.005), `/signals` ($0.01), `/regime/changed` ($0.02), `/history` ($0.05), `/signals/top` ($0.10), `/backtest` ($0.25) — USDC on Base mainnet (eip155:8453), payTo 0xc87a06DEE4c0E85912296002617120BBfd5EF990.
+
 ## Paid endpoints
 | Path | Cost (USDC) | Description |
 |------|------|-------------|

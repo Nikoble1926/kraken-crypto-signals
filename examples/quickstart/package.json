@@ -1,0 +1,17 @@
+{
+  "name": "kraken-crypto-signals-quickstart",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Copy-paste demo agent for the Kraken Crypto Signals x402 API. Free preview + paid x402 calls (USDC on Base).",
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "dependencies": {
+    "@x402/axios": "latest",
+    "@x402/evm": "latest",
+    "axios": "^1.13.2",
+    "dotenv": "^16.4.5",
+    "viem": "^2.39.0"
+  }
+}

@@ -834,6 +834,8 @@ _LLMS_TXT = (
     "OpenAPI: https://signals.nsgoods.org/openapi.json\n"
     "Agent card (A2A): https://signals.nsgoods.org/.well-known/agent.json\n"
     "MCP bridge: https://github.com/Nikoble1926/kraken-crypto-signals/tree/main/mcp\n"
+    "Quickstart (runnable demo agent, free preview + 402 challenge, ~5 min): "
+    "https://github.com/Nikoble1926/kraken-crypto-signals/tree/main/examples/quickstart\n"
     "\n"
     "Paid endpoints (USDC on Base):\n"
     "- GET /signals?pair=BTC/USD   trading signal BUY/SELL/HOLD + confidence   $0.01\n"

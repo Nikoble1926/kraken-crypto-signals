@@ -26,6 +26,10 @@ node agent.js
 
 Paid endpoints: `/indicators` ($0.005), `/signals` ($0.01), `/regime/changed` ($0.02), `/history` ($0.05), `/signals/top` ($0.10), `/backtest` ($0.25) — USDC on Base mainnet (eip155:8453), payTo 0xc87a06DEE4c0E85912296002617120BBfd5EF990.
 
+## Build an agent on this API
+
+Starter template (free preview → paid pay-per-call over x402): https://github.com/Nikoble1926/agent-starter-x402
+
 ## Paid endpoints
 | Path | Cost (USDC) | Description |
 |------|------|-------------|

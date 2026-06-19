@@ -1,13 +1,47 @@
 {
-  "name": "kraken-crypto-signals-mcp",
-  "version": "1.0.0",
-  "private": true,
+  "name": "kraken-signals-mcp",
+  "version": "1.1.0",
+  "description": "MCP server bridging the Kraken Crypto Signals x402 API: a free BTC/USD signal preview plus pay-per-call USDC-on-Base trading signals, regime, history, backtest and TA indicator tools for Claude Desktop, Cursor and any MCP client.",
   "type": "module",
+  "bin": {
+    "kraken-signals-mcp": "dist/server.js"
+  },
+  "main": "dist/server.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "start": "node dist/server.js",
     "dev": "tsx server.ts"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "x402",
+    "base",
+    "usdc",
+    "crypto-signals",
+    "kraken",
+    "trading-signals",
+    "agentic-commerce"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nikoble1926/kraken-crypto-signals.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://github.com/Nikoble1926/kraken-crypto-signals/tree/main/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Nikoble1926/kraken-crypto-signals/issues"
+  },
+  "author": "Nikoble1926",
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.9.0",
     "@x402/axios": "latest",
@@ -18,6 +52,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }

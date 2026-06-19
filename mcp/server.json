@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.Nikoble1926/kraken-signals-mcp",
+  "description": "Free BTC/USD signal preview plus pay-per-call (USDC on Base via x402) crypto trading signals, market regime, history, backtest and TA indicators from the Kraken Crypto Signals API.",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/Nikoble1926/kraken-crypto-signals",
+    "source": "github",
+    "subfolder": "mcp"
+  },
+  "version": "1.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "kraken-signals-mcp",
+      "version": "1.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "EVM_PRIVATE_KEY",
+          "description": "Optional. Base wallet private key (0x...) for a low-balance hot wallet holding a little USDC. Required only for the paid tools; the free get_signal_preview tool works without it. Never use your main wallet.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "RESOURCE_SERVER_URL",
+          "description": "Optional. Override the signals API base URL. Defaults to https://signals.nsgoods.org.",
+          "isRequired": false,
+          "isSecret": false,
+          "default": "https://signals.nsgoods.org",
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

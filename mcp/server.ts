@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Kraken Crypto Signals — MCP server (x402 buyer bridge)
  * ------------------------------------------------------
@@ -8,6 +9,9 @@
  * HTTP 402, the wrapper signs a USDC payment on Base with YOUR wallet and
  * retries. You only pay for the paid tools; the preview is free.
  *
+ * The free preview tool works WITHOUT any wallet key. Paid tools only activate
+ * when EVM_PRIVATE_KEY is set (a low-balance Base hot wallet with a little USDC).
+ *
  * Mirrors the official x402 MCP client pattern:
  *   https://docs.x402.org/guides/mcp-server-with-x402
  * (x402 v2 packages evolve — if install/build fails, check that guide for the
@@ -16,6 +20,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import type { AxiosInstance } from "axios";
 import axios from "axios";
 import { x402Client, wrapAxiosWithPayment } from "@x402/axios";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
@@ -27,25 +32,47 @@ config();
 const evmPrivateKey = process.env.EVM_PRIVATE_KEY as `0x${string}` | undefined;
 const baseURL = process.env.RESOURCE_SERVER_URL || "https://signals.nsgoods.org";
 
-if (!evmPrivateKey) {
-  throw new Error(
-    "EVM_PRIVATE_KEY is required (a Base wallet with a little USDC — use a low-balance hot wallet)."
-  );
+// Plain client — used for the free preview (no payment, no key needed).
+const plain: AxiosInstance = axios.create({ baseURL });
+
+// Paid client — only wired up when a wallet key is provided. Falls back to the
+// plain client so paid tools can return a friendly "set EVM_PRIVATE_KEY" message
+// instead of crashing the server at startup.
+let api: AxiosInstance = plain;
+let paidEnabled = false;
+if (evmPrivateKey) {
+  const client = new x402Client();
+  client.register("eip155:*", new ExactEvmScheme(privateKeyToAccount(evmPrivateKey)));
+  api = wrapAxiosWithPayment(axios.create({ baseURL }), client);
+  paidEnabled = true;
 }
 
-const client = new x402Client();
-client.register("eip155:*", new ExactEvmScheme(privateKeyToAccount(evmPrivateKey)));
-const api = wrapAxiosWithPayment(axios.create({ baseURL }), client);
+const ok = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data) }] });
+const needKey = () => ({
+  content: [
+    {
+      type: "text" as const,
+      text: JSON.stringify({
+        error: "payment_not_configured",
+        message:
+          "This is a paid tool. Set EVM_PRIVATE_KEY (a low-balance Base wallet with a little USDC) " +
+          "in this server's env to enable USDC-on-Base payments. The free get_signal_preview tool " +
+          "works without a key.",
+      }),
+    },
+  ],
+  isError: true,
+});
 
-const server = new McpServer({ name: "Kraken Crypto Signals", version: "1.0.0" });
+const server = new McpServer({ name: "Kraken Crypto Signals", version: "1.1.0" });
 
 server.tool(
   "get_signal_preview",
-  "FREE sample: current BTC/USD signal direction (BUY/SELL/HOLD), no payment.",
+  "FREE sample: current BTC/USD signal direction (BUY/SELL/HOLD), no payment, no wallet key required.",
   {},
   async () => {
-    const r = await api.get("/signals/preview");
-    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+    const r = await plain.get("/signals/preview");
+    return ok(r.data);
   }
 );
 
@@ -54,8 +81,9 @@ server.tool(
   "Paid ($0.01 USDC): trading signal + confidence for one pair. Any active Kraken */USD pair.",
   { pair: z.string().default("BTC/USD").describe("e.g. BTC/USD, ETH/USD, SOL/USD") },
   async ({ pair }) => {
+    if (!paidEnabled) return needKey();
     const r = await api.get("/signals", { params: { pair } });
-    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+    return ok(r.data);
   }
 );
 
@@ -64,8 +92,9 @@ server.tool(
   "Paid ($0.10 USDC): market scan — strongest BUY/SELL signals across major pairs.",
   { limit: z.number().min(1).max(10).default(3).describe("How many top signals (1-10)") },
   async ({ limit }) => {
+    if (!paidEnabled) return needKey();
     const r = await api.get("/signals/top", { params: { limit } });
-    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+    return ok(r.data);
   }
 );
 
@@ -74,8 +103,9 @@ server.tool(
   "Paid ($0.05 USDC): revealed historical signal snapshots (commit-reveal hash chain). Returns past BUY/SELL/HOLD calls with their verifiable hashes; the latest snapshot is withheld.",
   { limit: z.number().int().min(1).max(100).default(20).describe("How many past snapshots (1-100)") },
   async ({ limit }) => {
+    if (!paidEnabled) return needKey();
     const r = await api.get("/history", { params: { limit } });
-    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+    return ok(r.data);
   }
 );
 
@@ -84,10 +114,11 @@ server.tool(
   "Paid ($0.02 USDC): current market regime (RISK_ON/RISK_OFF) from a provable chain + whether it changed since the regime you last saw. Cheap poll endpoint to react to regime flips.",
   { since: z.string().optional().describe("Regime you last saw (e.g. RISK_ON). If omitted, response reports the current regime only.") },
   async ({ since }) => {
+    if (!paidEnabled) return needKey();
     const params: Record<string, string> = {};
     if (since) params.since = since;
     const r = await api.get("/regime/changed", { params });
-    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+    return ok(r.data);
   }
 );
 
@@ -100,8 +131,9 @@ server.tool(
     step: z.number().int().min(1).max(15).default(5).describe("Walk-forward step in 1m bars (1-15). Smaller = denser sample but slower."),
   },
   async ({ pair, forward, step }) => {
+    if (!paidEnabled) return needKey();
     const r = await api.get("/backtest", { params: { pair, forward, step } });
-    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+    return ok(r.data);
   }
 );
 
@@ -114,10 +146,11 @@ server.tool(
     name: z.string().optional().describe("Optional: return only one indicator (e.g. rsi14, ema50, macd_hist)"),
   },
   async ({ pair, tf, name }) => {
+    if (!paidEnabled) return needKey();
     const params: Record<string, string> = { pair, tf };
     if (name) params.name = name;
     const r = await api.get("/indicators", { params });
-    return { content: [{ type: "text", text: JSON.stringify(r.data) }] };
+    return ok(r.data);
   }
 );
 

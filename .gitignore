@@ -3,6 +3,8 @@
 __pycache__/
 *.pyc
 venv/
+node_modules/
+mcp/dist/
 track_record_private.jsonl
 track_record_public.jsonl
 yield_agent_state.json

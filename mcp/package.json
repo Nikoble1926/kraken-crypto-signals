@@ -1,6 +1,7 @@
 {
   "name": "kraken-signals-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
+  "mcpName": "io.github.Nikoble1926/kraken-signals-mcp",
   "description": "MCP server bridging the Kraken Crypto Signals x402 API: a free BTC/USD signal preview plus pay-per-call USDC-on-Base trading signals, regime, history, backtest and TA indicator tools for Claude Desktop, Cursor and any MCP client.",
   "type": "module",
   "bin": {

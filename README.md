@@ -48,6 +48,14 @@ Starter template (free preview → paid pay-per-call over x402): https://github.
 
 Any active Kraken `*/USD` spot pair works via `?pair=` (e.g. `ETH/USD`, `SOL/USD`, `XRP/USD`, `DOGE/USD`).
 
+## Verify a signed response
+Every response carries `signed_by` + `signature`: an EIP-191 `personal_sign` over the JSON body (canonical `json.dumps(sort_keys=True, separators=(",",":"))`) **before** those two keys are added. Anyone can recover the signing address and confirm it equals the published signer `0x5e63d01d6A266BC17f577B80199a2a07B15053C7` — proving the signal is authentic and untampered, **without paying**. [`examples/verify_signature.py`](examples/verify_signature.py) does exactly this against the FREE `/signals/preview` endpoint:
+
+```bash
+pip install eth_account
+python examples/verify_signature.py    # -> VERIFIED ✓  recover == signed_by == signer
+```
+
 ## Discovery
 Listed on **[x402scan](https://www.x402scan.com/server/bcc5723d-17eb-40f2-9e23-c1f2e3387dd2)** and the **[x402 Bazaar](https://docs.cdp.coinbase.com/x402/bazaar)** (CDP Facilitator) — agents can find this API via Bazaar semantic search / merchant lookup for payTo `0xc87a06DEE4c0E85912296002617120BBfd5EF990`. Settlement runs through the [Coinbase CDP Facilitator](https://docs.cdp.coinbase.com/x402).
 

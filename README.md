@@ -30,21 +30,19 @@ Paid endpoints: `/indicators` ($0.005), `/signals` ($0.01), `/regime/changed` ($
 
 Starter template (free preview → paid pay-per-call over x402): https://github.com/Nikoble1926/agent-starter-x402
 
-## Paid endpoints
-| Path | Cost (USDC) | Description |
+## Endpoints
+| Path | Cost | Description |
 |------|------|-------------|
-| `GET /signals?pair=BTC/USD` | $0.01 | Trading signal for one pair (BUY/SELL/HOLD + confidence) |
-| `GET /signals/top` | $0.10 | Market scan — strongest BUY/SELL signals across major pairs |
-| `GET /history?limit=20` | $0.05 | Revealed historical signal snapshots (commit-reveal) + verifiable hashes |
-| `GET /regime/changed?since=RISK_ON` | $0.02 | Market regime (RISK_ON/RISK_OFF) + whether it changed since you last looked |
-| `GET /backtest?pair=BTC/USD` | $0.25 | Walk-forward replay: win-rate + avg forward return per BUY/SELL signal |
-
-## Free endpoints
-| Path | Description |
-|------|-------------|
-| `GET /signals/preview` | Free sample — BTC/USD direction only |
-| `GET /track-record` | Public tamper-evident hash chain |
-| `GET /.well-known/x402` · `GET /openapi.json` · `GET /health` · `GET /` | Manifest, OpenAPI spec, health, landing page |
+| `GET /signals?pair=BTC/USD` | $0.01 USDC | Trading signal for one pair (BUY/SELL/HOLD + confidence) |
+| `GET /signals/top` | $0.10 USDC | Market scan — strongest BUY/SELL signals across major pairs |
+| `GET /indicators?pair=BTC/USD&tf=1h` | $0.005 USDC | Atomic technical indicators (RSI, EMA20/50/200, MACD, ATR, Bollinger, volume) |
+| `GET /regime/changed?since=RISK_ON` | $0.02 USDC | Market regime RISK_ON/RISK_OFF + change-since flag |
+| `GET /history?limit=20` | $0.05 USDC | Revealed historical signal snapshots + verifiable hashes |
+| `GET /backtest` | $0.25 USDC | Walk-forward replay: win-rate + avg forward return per signal |
+| `GET /signals/preview` | free | Free sample: BTC/USD direction only |
+| `GET /health` | free | Health check |
+| `GET /.well-known/x402` | free | x402 service manifest |
+| `GET /` | free | Human-readable landing page |
 
 Any active Kraken `*/USD` spot pair works via `?pair=` (e.g. `ETH/USD`, `SOL/USD`, `XRP/USD`, `DOGE/USD`).
 

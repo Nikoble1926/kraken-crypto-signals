@@ -64,7 +64,7 @@ const needKey = () => ({
   isError: true,
 });
 
-const server = new McpServer({ name: "Kraken Crypto Signals", version: "1.1.0" });
+const server = new McpServer({ name: "Kraken Crypto Signals", version: "1.2.0" });
 
 server.tool(
   "get_signal_preview",

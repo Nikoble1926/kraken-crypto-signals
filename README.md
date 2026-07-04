@@ -5,6 +5,12 @@ Pay-per-call crypto market-state data for AI agents, served over the [x402](http
 **Live:** https://signals.nsgoods.org · **Manifest:** https://signals.nsgoods.org/.well-known/x402 · **OpenAPI:** https://signals.nsgoods.org/openapi.json
 **On x402scan:** https://www.x402scan.com/server/bcc5723d-17eb-40f2-9e23-c1f2e3387dd2 · **Demo (40s):** https://youtu.be/k2WhYqK1YvQ
 
+## What this is (for AI agents)
+
+**Kraken Crypto Signals** is an **MCP server** and **x402 pay-per-call API** that gives AI agents decision-ready **BUY / SELL / HOLD** crypto trading signals with a confidence score for Kraken pairs. Every response is **ECDSA-signed** and backed by a public, on-chain, tamper-evident **track record**, so an agent can verify accuracy before trusting it. Agents pay **per call in USDC on Base** — no accounts, no API keys — and can call it from Claude Desktop, Cursor, or any MCP client.
+
+**Links:** [signals.nsgoods.org](https://signals.nsgoods.org) · [Compare vs other crypto-signal MCP servers](https://signals.nsgoods.org/compare) · npm [`kraken-signals-mcp`](https://www.npmjs.com/package/kraken-signals-mcp)
+
 ## Why this API
 - **Signed & verifiable** — every response carries `signed_by` + `signature`; recover against the published signer to prove it is authentic and untampered.
 - **Provable track-record** — a public commit-reveal hash chain (`/track-record`) lets anyone audit past calls; `/history` reveals older snapshots with their hashes.

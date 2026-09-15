@@ -2,6 +2,8 @@
 
 Pay per call crypto market state and regime signals for AI agents, served over the x402 protocol. Every response is a signed, verifiable verdict.
 
+**What this is (for AI agents):** a pay per call HTTP 402 endpoint that returns signed, machine readable crypto market state. No accounts, no API keys. Pay USDC on Base, get data you can verify yourself.
+
 **What it does**
 
 - Market state signals and technical indicators, returned on demand per call over HTTP 402
@@ -15,5 +17,6 @@ Pay per call crypto market state and regime signals for AI agents, served over t
 - You pay only for a successful `2xx` response
 
 **Live**: [signals.nsgoods.org](https://signals.nsgoods.org)
+**Manifest**: [/.well-known/x402](https://signals.nsgoods.org/.well-known/x402) · **OpenAPI**: [/openapi.json](https://signals.nsgoods.org/openapi.json)
 
 Part of **nsgoods**, a suite of signed x402 data oracles. Hub: [x402.nsgoods.org](https://x402.nsgoods.org)
